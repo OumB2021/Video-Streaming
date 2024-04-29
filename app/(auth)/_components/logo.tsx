@@ -14,6 +14,10 @@ export const Logo = () => {
       <div className="bg-white rounded-full p-3">
         <Image src="./logo.svg" alt="logo" height="70" width="70" />
       </div>
+      <div className={cn("flex flex-col items-center", font.className)}>
+        <p className="text-xl font-semibold">Video Stream</p>
+        <p className="text-sm text-muted-foreground">Let&apos;s stream!</p>
+      </div>
     </div>
   );
 };
