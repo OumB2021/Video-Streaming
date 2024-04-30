@@ -96,6 +96,7 @@ export async function POST(req: Request) {
         externalUserId: payload.data.id,
       },
     });
+
     if (!currentUser) {
       return new Response("User not found", { status: 404 });
     }
