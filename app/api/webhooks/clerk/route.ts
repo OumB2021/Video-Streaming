@@ -91,6 +91,11 @@ export async function POST(req: Request) {
   }
 
   if (eventType === "user.deleted") {
+    const currentUser = await db.user.findUnique({
+      where: {
+        externalUserId: payload.data.id,
+      },
+    });
     if (!currentUser) {
       return new Response("User not found", { status: 404 });
     }
