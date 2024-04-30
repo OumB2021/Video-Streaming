@@ -1,9 +1,14 @@
-import { prismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
+// Ensure TypeScript recognizes the custom global variable
 declare global {
-  var prisma: prismaClient | undefined;
+  var prisma: PrismaClient | undefined;
 }
 
-export const db = globalThis.prisma || new PrismaClient();
+// Singleton pattern for PrismaClient
+export const db = global.prisma || new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalThis.prisma = db;
+// In non-production environments, reuse the same Prisma client
+if (process.env.NODE_ENV !== "production") {
+  global.prisma = db;
+}
