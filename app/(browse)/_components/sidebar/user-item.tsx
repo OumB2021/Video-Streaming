@@ -21,7 +21,6 @@ export const UserItem = ({ username, imageUrl, isLive }: UserItemProps) => {
   const { collapsed } = useSidebar((state) => state);
   const href = `/${username}`;
   const isActive = pathname === href;
-  console.log(`pathname is ${pathname}`);
   return (
     <Button
       asChild
