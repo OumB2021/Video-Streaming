@@ -1,6 +1,7 @@
 import { isFollowingUser } from "@/lib/follow-service";
 import { getUserByUsername } from "@/lib/user-service";
 import { notFound } from "next/navigation";
+import { Actions } from "./_components/actions";
 
 interface UserPagePropos {
   params: {
@@ -19,7 +20,8 @@ const UserPage = async ({ params }: UserPagePropos) => {
     <div className="flex flex-col g-y-4">
       <p>username: {user.username}</p>
       <p>user id : {user.id}</p>
-      <p>is following: {isFollowing}</p>
+      <p>is following: {`${isFollowing}`}</p>
+      <Actions />
     </div>
   );
 };
