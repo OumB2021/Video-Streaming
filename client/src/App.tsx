@@ -1,38 +1,185 @@
-import { useQuery } from "@tanstack/react-query";
-import "./App.css";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import { useEffect, useRef, useState } from "react";
 
 function App() {
-  const { data } = useQuery({
-    queryKey: ["hello-world"],
-    queryFn: async () => {
-      const response = await fetch("/api");
-      return await response.text();
-    },
-  });
+  const [enable, setEnable] = useState<boolean | string>(false);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!enable) return;
+
+    let id: string | null = null;
+    const rtc = new RTCPeerConnection();
+    let stream: MediaStream | null = null;
+    const ws = new WebSocket("ws://192.168.1.70:3000/api/ws");
+    const remoteVideo = remoteVideoRef.current;
+    const localVideo = localVideoRef.current;
+
+    navigator.mediaDevices
+      .getUserMedia({
+        video: true,
+        audio: true,
+      })
+      .then(async (newStream) => {
+        stream = newStream;
+        if (localVideo) {
+          localVideo.srcObject = stream;
+        }
+
+        newStream
+          .getTracks()
+          .forEach((track) => rtc.addTrack(track, newStream));
+
+        rtc
+          .createOffer()
+          .then((offer) => {
+            rtc.setLocalDescription(offer);
+            ws.send(
+              JSON.stringify({
+                src: id,
+                type: "offer",
+                payload: offer,
+              })
+            );
+          })
+          .catch((err) => {
+            console.error(err);
+          });
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    rtc.ontrack = (event) => {
+      // Handle incoming media tracks
+      const remoteStream = event.streams[0];
+      // Display the remote stream in a video element
+      if (remoteVideo) {
+        remoteVideo.srcObject = remoteStream;
+      }
+    };
+
+    // Add event listeners for ICE candidates and track events
+    rtc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("Sending ICE candidate to server", event.candidate);
+        ws.send(
+          JSON.stringify({
+            src: id,
+            type: "iceCandidate",
+            payload: event.candidate,
+          })
+        );
+      } else {
+        console.log("All ICE candidates have been sent");
+      }
+    };
+
+    ws.onmessage = (ev) => {
+      const data = JSON.parse(ev.data) as
+        | { src: "server"; type: "id"; payload: string }
+        | { src: string; type: "offer"; payload: RTCSessionDescriptionInit }
+        | { src: string; type: "answer"; payload: RTCSessionDescriptionInit }
+        | { src: string; type: "iceCandidate"; payload: RTCIceCandidateInit };
+
+      switch (data.type) {
+        case "id":
+          console.log("Connected to server with ID:", data.payload);
+          id = data.payload;
+
+          break;
+        case "offer":
+          console.log("Received offer from server", data);
+          rtc.setRemoteDescription(data.payload);
+          rtc.createAnswer().then((answer) => {
+            rtc.setLocalDescription(answer);
+            ws.send(
+              JSON.stringify({
+                src: id,
+                type: "answer",
+                payload: answer,
+              })
+            );
+          });
+          break;
+        case "answer":
+          if (!data.payload) {
+            console.warn("Received empty answer from server");
+            break;
+          }
+          console.log("Received answer from server", data);
+          rtc.setRemoteDescription(data.payload);
+          break;
+        case "iceCandidate":
+          if (!data.payload) {
+            console.warn("Received empty ICE candidate from server");
+            break;
+          }
+          console.log("Received ICE candidate from server", data);
+          rtc.addIceCandidate(data.payload);
+          break;
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      setEnable(false);
+    };
+
+    return () => {
+      rtc.close();
+      ws.close();
+      stream?.getTracks().forEach((track) => {
+        track.stop();
+      });
+      if (localVideo) {
+        localVideo.srcObject = null;
+      }
+    };
+  }, [enable]);
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="">
+      <div className="flex justify-center items-center">
+        <div className="aspect-video w-full max-w-sm bg-gray-500">
+          <h2>Remote Video</h2>
+          <video
+            className={`w-full h-full object-cover`}
+            ref={remoteVideoRef}
+            autoPlay
+          />
+        </div>
+        <div className="aspect-video w-full max-w-sm bg-gray-500">
+          <h2>Local Video</h2>
+          <video
+            className={`w-full h-full object-cover`}
+            ref={localVideoRef}
+            autoPlay
+          />
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        {data ? <p>{data}</p> : <p>Loading...</p>}
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+      {enable && (
+        <div className="text-center mt-4">
+          <p>WebRTC connection enabled</p>
+          <button
+            className="block mx-auto mt-4 px-4 py-2 bg-red-500 text-white rounded"
+            onClick={() => setEnable(false)}
+          >
+            Stop
+          </button>
+        </div>
+      )}
+      {!enable && (
+        <div className="flex mt-4">
+          <button
+            className="block mx-auto mt-4 px-4 py-2 bg-green-500 text-white rounded"
+            onClick={() => setEnable(true)}
+          >
+            Start
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
