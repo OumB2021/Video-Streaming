@@ -1,8 +1,8 @@
-import { getSelfByUsername } from "@/lib/auth-service";
+import { getSelf } from "@/lib/auth-service";
 import { redirect } from "next/navigation";
+import { Container } from "./_components/container";
 import { Navbar } from "./_components/navbar";
 import { Sidebar } from "./_components/sidebar";
-import { Container } from "./_components/container";
 
 interface CreatorLayoutProps {
   params: { username: string };
@@ -10,11 +10,14 @@ interface CreatorLayoutProps {
 }
 
 const CreatorLayout = async ({ params, children }: CreatorLayoutProps) => {
-  const self = await getSelfByUsername(params.username);
+  const self = await getSelf();
 
   if (!self) {
     redirect("/");
+  } else if (self.username !== params.username) {
+    redirect(`/u/${self.username}`);
   }
+
   return (
     <>
       <Navbar />
