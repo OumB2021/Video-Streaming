@@ -50,6 +50,22 @@ export const createIngress = async (ingressType: IngressInput) => {
     participantIdentity: self.id,
   };
 
+  // if (ingressType === IngressInput.WHIP_INPUT) {
+  //   options.enableTranscoding = false;
+  // } else {
+  //   options.video = {
+  //     name: "video",
+  //     source: TrackSource.CAMERA,
+  //     preset: IngressVideoEncodingPreset.H264_1080P_30FPS_3_LAYERS,
+  //   };
+
+  //   options.audio = {
+  //     name: "audio",
+  //     source: TrackSource.MICROPHONE,
+  //     preset: IngressAudioEncodingPreset.OPUS_STEREO_96KBPS,
+  //   };
+  // }
+
   if (ingressType === IngressInput.WHIP_INPUT) {
     options.enableTranscoding = false;
   } else {
@@ -89,5 +105,5 @@ export const createIngress = async (ingressType: IngressInput) => {
 
   revalidatePath(`/u/${self.username}/keys`);
 
-  return ingress;
+  return ingress.toJson();
 };
