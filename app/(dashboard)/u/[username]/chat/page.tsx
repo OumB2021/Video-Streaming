@@ -1,6 +1,7 @@
 import { getSelf } from "@/lib/auth-service";
 import { getStreamByUserId } from "@/lib/service-service";
 import { ToggleCard } from "./_components/toggle-card";
+import ChatLoading from "./loading";
 
 const page = async () => {
   const self = await getSelf();
@@ -9,7 +10,9 @@ const page = async () => {
   if (!stream) {
     throw new Error("Stream not found");
   }
-
+  // if (!self.stream) {
+  //   return <ChatLoading />;
+  // }
   return (
     <div className="p-6">
       <div className="mb-4">
