@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@clerk/nextjs": "^5.0.3",
     "@clerk/themes": "^2.1.0",
+    "@headlessui/react": "^1.7.19",
     "@livekit/components-react": "^2.2.1",
     "@prisma/client": "^5.13.0",
     "@radix-ui/react-avatar": "^1.0.4",
@@ -25,6 +28,7 @@
     "livekit-server-sdk": "^2.3.0",
     "lucide-react": "^0.376.0",
     "next": "14.2.3",
+    "next-safe-action": "^6.2.0",
     "next-themes": "^0.3.0",
     "query-string": "^9.0.0",
     "react": "^18",
@@ -34,6 +38,7 @@
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.1.0",
+    "zod": "^3.23.6",
     "zustand": "^4.5.2"
   },
   "devDependencies": {

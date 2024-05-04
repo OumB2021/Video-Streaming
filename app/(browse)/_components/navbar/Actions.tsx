@@ -11,7 +11,7 @@ export const Actions = async () => {
     <div className="flex items-center justify-end gap-x-2 ml-4 lg:ml-0">
       {!user && (
         <SignInButton>
-          <Button size={"sm"} variant={"primary"}>
+          <Button size="sm" variant="primary">
             Login
           </Button>
         </SignInButton>
@@ -19,8 +19,8 @@ export const Actions = async () => {
       {!!user && (
         <div className="flex items-center gap-x-4">
           <Button
-            size={"sm"}
-            variant={"glost"}
+            size="sm"
+            variant="ghost"
             className="text-muted-primary hover:text-primary"
             asChild
           >

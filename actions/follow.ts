@@ -1,35 +1,24 @@
 "use server";
 
 import { followUser, unfollowUser } from "@/lib/follow-service";
+import { action } from "@/lib/safe-action";
 import { revalidatePath } from "next/cache";
+import z from "zod";
 
-export const onFollow = async (id: string) => {
-  try {
-    const followedUser = await followUser(id);
-    revalidatePath("/");
+export const onFollow = action(z.string(), async (id) => {
+  const followedUser = await followUser(id);
 
-    if (followedUser) {
-      revalidatePath(`/${followedUser.following.username}`);
-    }
+  revalidatePath("/");
+  revalidatePath(`/${followedUser.following.username}`);
 
-    return followedUser;
-  } catch (error) {
-    throw new Error("Internal Error");
-  }
-};
+  return { ...followedUser, isFollowing: true as boolean };
+});
 
-export const onUnfollow = async (id: string) => {
-  try {
-    const unfollowedUser = await unfollowUser(id);
+export const onUnfollow = action(z.string(), async (id) => {
+  const unfollowedUser = await unfollowUser(id);
 
-    revalidatePath("/");
+  revalidatePath("/");
+  revalidatePath(`/${unfollowedUser.following.username}`);
 
-    if (unfollowedUser) {
-      revalidatePath(`/${unfollowedUser.following.username}`);
-    }
-
-    return unfollowedUser;
-  } catch (error) {
-    throw new Error("Internal Error");
-  }
-};
+  return { ...unfollowedUser, isFollowing: false as boolean };
+});

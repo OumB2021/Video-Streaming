@@ -1,9 +1,9 @@
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
-import { Skeleton } from "./ui/skeleton";
-import { Avatar, AvatarFallBack, AvatarImage } from "./ui/avatar";
 import { LiveBadge } from "./live-badge";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Skeleton } from "./ui/skeleton";
 
 const avatarSizes = cva("", {
   variants: {
@@ -32,6 +32,7 @@ export const UserAvatar = ({
   size,
 }: UserAvatarProps) => {
   const canShowBage = showBadge && isLive;
+
   return (
     <div className="relative">
       <Avatar
@@ -41,10 +42,10 @@ export const UserAvatar = ({
         )}
       >
         <AvatarImage src={imageUrl} className="object-cover" />
-        {/* <AvatarFallBack>
+        <AvatarFallback>
           {username[0]}
           {username[username.length - 1]}
-        </AvatarFallBack> */}
+        </AvatarFallback>
       </Avatar>
       {canShowBage && (
         <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
