@@ -1,10 +1,10 @@
 "use client";
 
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
-import { useTransition } from "react";
-import { updateStream } from "@/actions/stream";
+import { useAction } from "next-safe-action/hooks";
 
+import { updateStream } from "@/actions/stream";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type FieldTypes = "isChatEnabled" | "isChatDelayed" | "isChatFollowersOnly";
@@ -19,24 +19,37 @@ export const ToggleCard = ({
   value = false,
   field,
 }: ToggleCardProps) => {
-  const [isPending, startTransition] = useTransition();
+  const updateAction = useAction(updateStream, {
+    onSuccess: () => {
+      toast.success("Chat settings were updated successfully.");
+    },
+    onError: () => {
+      toast.error("Something went wrong during the update.");
+    },
+  });
 
-  const onChange = () => {
-    startTransition(() => {
-      updateStream({ [field]: !value })
-        .then(() => toast.success("Chat settings were updated successfully!"))
-        .catch(() => toast.error("Something went wrong during update!"));
+  const handleChange = (checked: boolean) => {
+    updateAction.execute({
+      [field]: checked,
     });
   };
+
+  const optimisticValue =
+    updateAction.status === "executing"
+      ? !value
+      : updateAction.result.data
+      ? updateAction.result.data[field]
+      : value;
+
   return (
     <div className="rounded-xl bg-muted p-6">
       <div className="flex items-center justify-between">
         <p className="font-semibold shrink-0">{label}</p>
         <div className="space-y-2">
           <Switch
-            disabled={isPending}
-            onCheckedChange={onChange}
-            checked={value}
+            disabled={updateAction.status === "executing"}
+            onCheckedChange={handleChange}
+            checked={optimisticValue}
           >
             {value ? "On" : "Off"}
           </Switch>
