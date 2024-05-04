@@ -4,9 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
-    "types": [
-      "bun"
-    ],
+    "types": ["bun"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "noEmit": true

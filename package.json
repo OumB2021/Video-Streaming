@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "format": "turbo run format",
     "typecheck": "turbo run typecheck"
   },
   "keywords": [],

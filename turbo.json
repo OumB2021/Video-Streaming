@@ -7,6 +7,9 @@
     "dev": {
       "cache": false
     },
+    "format": {
+      "cache": false
+    },
     "typecheck": {}
   }
 }

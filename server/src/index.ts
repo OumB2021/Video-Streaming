@@ -30,7 +30,7 @@ app.get(
             src: "server",
             type: "id",
             payload: id,
-          })
+          }),
         );
         for (const [clientId, offer] of offerQueue.entries()) {
           if (id === clientId) continue;
@@ -39,14 +39,16 @@ app.get(
         }
         for (const [clientId, ices] of iceQueue.entries()) {
           if (id === clientId) continue;
-          console.log(`${id}:     Sending queued ICE candidates from ${clientId}`);
+          console.log(
+            `${id}:     Sending queued ICE candidates from ${clientId}`,
+          );
           for (const ice of ices) {
             ws.send(
               JSON.stringify({
                 src: clientId,
                 type: "iceCandidate",
                 payload: ice,
-              })
+              }),
             );
           }
         }
@@ -78,7 +80,7 @@ app.get(
         iceQueue.delete(id);
       },
     };
-  })
+  }),
 );
 
 const port = 3001;
