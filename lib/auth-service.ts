@@ -1,8 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { cache } from "react";
 
 import { db } from "@/lib/db";
 
-export const getSelf = async () => {
+export const getSelf = cache(async () => {
   const self = await currentUser();
 
   if (!self || !self.username) {
@@ -18,4 +19,4 @@ export const getSelf = async () => {
   }
 
   return user;
-};
+});

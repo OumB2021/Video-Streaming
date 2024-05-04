@@ -7,8 +7,11 @@ import { getRecommended } from "@/lib/recommended-service";
 import { Following, FollowingSkeleton } from "./following";
 
 export const Sidebar = async () => {
-  const recommended = await getRecommended();
-  const following = await getFollowedUsers();
+  const [recommended, following] = await Promise.all([
+    getRecommended().catch(() => []),
+    getFollowedUsers().catch(() => []),
+  ]);
+
   return (
     <Wrapper>
       <Toggle />
