@@ -12,7 +12,8 @@ const KeysPage = async () => {
   if (!stream) {
     throw new Error("stream not found");
   }
-
+  console.log("server url is a string:", typeof stream.serverUrl === "string");
+  console.log("stream key is a string:", typeof stream.streamKey === "string");
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
