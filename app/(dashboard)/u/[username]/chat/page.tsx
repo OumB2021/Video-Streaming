@@ -3,7 +3,7 @@ import { getStreamByUserId } from "@/lib/service-service";
 import { ToggleCard } from "./_components/toggle-card";
 import ChatLoading from "./loading";
 
-const page = async () => {
+const Page = async () => {
   const self = await getSelf();
   const stream = await getStreamByUserId(self.id);
 
@@ -39,4 +39,4 @@ const page = async () => {
   );
 };
 
-export default page;
+export default Page;
