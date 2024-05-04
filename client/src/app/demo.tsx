@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SignalClient } from "./signal";
 
 export default function Demo() {
   const [enable, setEnable] = useState<boolean | string>(false);
@@ -10,10 +11,9 @@ export default function Demo() {
   useEffect(() => {
     if (!enable) return;
 
-    let id: string | null = null;
     const rtc = new RTCPeerConnection();
+    const signal = new SignalClient();
     let stream: MediaStream | null = null;
-    const ws = new WebSocket("ws://localhost:3001/api/ws");
     const remoteVideo = remoteVideoRef.current;
     const localVideo = localVideoRef.current;
 
@@ -24,6 +24,7 @@ export default function Demo() {
       })
       .then(async (newStream) => {
         stream = newStream;
+
         if (localVideo) {
           localVideo.srcObject = stream;
         }
@@ -34,15 +35,9 @@ export default function Demo() {
 
         rtc
           .createOffer()
-          .then((offer) => {
-            rtc.setLocalDescription(offer);
-            ws.send(
-              JSON.stringify({
-                src: id,
-                type: "offer",
-                payload: offer,
-              }),
-            );
+          .then(async (offer) => {
+            await rtc.setLocalDescription(offer);
+            signal.send("offer", offer);
           })
           .catch((err) => {
             console.error(err);
@@ -57,80 +52,73 @@ export default function Demo() {
       const remoteStream = event.streams[0];
       // Display the remote stream in a video element
       if (remoteVideo) {
-        remoteVideo.srcObject = remoteStream;
+        remoteVideo.srcObject = remoteStream as MediaProvider;
       }
     };
 
-    // Add event listeners for ICE candidates and track events
     rtc.onicecandidate = (event) => {
       if (event.candidate) {
         console.log("Sending ICE candidate to server", event.candidate);
-        ws.send(
-          JSON.stringify({
-            src: id,
-            type: "iceCandidate",
-            payload: event.candidate,
-          }),
-        );
+        signal.send("iceCandidate", event.candidate);
       } else {
         console.log("All ICE candidates have been sent");
       }
     };
 
-    ws.onmessage = (ev) => {
-      const data = JSON.parse(ev.data) as
-        | { src: "server"; type: "id"; payload: string }
-        | { src: string; type: "offer"; payload: RTCSessionDescriptionInit }
-        | { src: string; type: "answer"; payload: RTCSessionDescriptionInit }
-        | { src: string; type: "iceCandidate"; payload: RTCIceCandidateInit };
-
-      switch (data.type) {
-        case "id":
-          console.log("Connected to server with ID:", data.payload);
-          id = data.payload;
-
+    signal.onmessage = (message) => {
+      switch (message.type) {
+        case "offer": {
+          console.log("Received offer from server", message);
+          rtc
+            .setRemoteDescription(message.payload)
+            .then(() => {
+              console.log("Offer set as remote description successfully");
+              return rtc.createAnswer();
+            })
+            .then(async (answer) => {
+              console.log("Sending answer...");
+              await rtc.setLocalDescription(answer);
+              signal.send("answer", answer);
+            })
+            .catch((err) => {
+              console.error("Failed to set remote description:", err);
+            });
           break;
-        case "offer":
-          console.log("Received offer from server", data);
-          rtc.setRemoteDescription(data.payload);
-          rtc.createAnswer().then((answer) => {
-            rtc.setLocalDescription(answer);
-            ws.send(
-              JSON.stringify({
-                src: id,
-                type: "answer",
-                payload: answer,
-              }),
-            );
-          });
+        }
+        case "answer": {
+          console.log("Received answer from server", message);
+          rtc
+            .setRemoteDescription(message.payload)
+            .then(() => {
+              console.log("Remote description set successfully");
+            })
+            .catch((err) => {
+              console.error("Failed to set remote description:", err);
+            });
           break;
-        case "answer":
-          if (!data.payload) {
-            console.warn("Received empty answer from server");
-            break;
-          }
-          console.log("Received answer from server", data);
-          rtc.setRemoteDescription(data.payload);
-          break;
-        case "iceCandidate":
-          if (!data.payload) {
+        }
+        case "iceCandidate": {
+          if (!message.payload) {
             console.warn("Received empty ICE candidate from server");
             break;
           }
-          console.log("Received ICE candidate from server", data);
-          rtc.addIceCandidate(data.payload);
+          console.log("Received ICE candidate from server", message);
+          rtc
+            .addIceCandidate(message.payload)
+            .then(() => {
+              console.log("ICE candidate added successfully");
+            })
+            .catch((err) => {
+              console.error("Failed to add ICE candidate:", err);
+            });
           break;
+        }
       }
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-      setEnable(false);
     };
 
     return () => {
       rtc.close();
-      ws.close();
+      signal.close();
       stream?.getTracks().forEach((track) => {
         track.stop();
       });
