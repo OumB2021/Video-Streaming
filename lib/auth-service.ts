@@ -13,9 +13,9 @@ export const getSelf = async () => {
     where: { externalUserId: self.id },
   });
 
-  // const (!user){
-  //   throw new Error("user not found");
-  // }
+  if (!user) {
+    throw new Error(`${self.id} not found in database`);
+  }
 
   return user;
 };

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 interface ActionProps {
   isFollowing: boolean;
-  userId: String;
+  userId: string;
 }
 
 export const Actions = ({ isFollowing, userId }: ActionProps) => {

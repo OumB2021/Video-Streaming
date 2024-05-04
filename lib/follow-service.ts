@@ -42,7 +42,7 @@ export const isFollowingUser = async (id: string) => {
 
     return !!existingFollow;
   } catch (error) {
-    console.error(error.message || "Internal Error");
+    console.error(error instanceof Error ? error.message : "Internal error");
     return false;
   }
 };
