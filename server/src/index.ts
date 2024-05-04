@@ -81,12 +81,12 @@ app.get(
   })
 );
 
-const port = 3000;
+const port = 3001;
 console.log(`Server is running on port ${port}`);
 
 Bun.serve({
   hostname: "0.0.0.0",
-  port: 3000,
+  port,
   fetch: app.fetch,
   websocket,
 });

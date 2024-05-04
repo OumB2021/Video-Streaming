@@ -1,6 +1,7 @@
+"use client";
 import { useEffect, useRef, useState } from "react";
 
-function App() {
+export default function Demo() {
   const [enable, setEnable] = useState<boolean | string>(false);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -11,7 +12,7 @@ function App() {
     let id: string | null = null;
     const rtc = new RTCPeerConnection();
     let stream: MediaStream | null = null;
-    const ws = new WebSocket("ws://192.168.1.70:3000/api/ws");
+    const ws = new WebSocket("ws://localhost:3001/api/ws");
     const remoteVideo = remoteVideoRef.current;
     const localVideo = localVideoRef.current;
 
@@ -39,7 +40,7 @@ function App() {
                 src: id,
                 type: "offer",
                 payload: offer,
-              })
+              }),
             );
           })
           .catch((err) => {
@@ -68,7 +69,7 @@ function App() {
             src: id,
             type: "iceCandidate",
             payload: event.candidate,
-          })
+          }),
         );
       } else {
         console.log("All ICE candidates have been sent");
@@ -98,7 +99,7 @@ function App() {
                 src: id,
                 type: "answer",
                 payload: answer,
-              })
+              }),
             );
           });
           break;
@@ -140,11 +141,11 @@ function App() {
 
   return (
     <div className="">
-      <div className="flex justify-center items-center">
+      <div className="flex items-center justify-center">
         <div className="aspect-video w-full max-w-sm bg-gray-500">
           <h2>Remote Video</h2>
           <video
-            className={`w-full h-full object-cover`}
+            className={`h-full w-full object-cover`}
             ref={remoteVideoRef}
             autoPlay
           />
@@ -152,17 +153,17 @@ function App() {
         <div className="aspect-video w-full max-w-sm bg-gray-500">
           <h2>Local Video</h2>
           <video
-            className={`w-full h-full object-cover`}
+            className={`h-full w-full object-cover`}
             ref={localVideoRef}
             autoPlay
           />
         </div>
       </div>
       {enable && (
-        <div className="text-center mt-4">
+        <div className="mt-4 text-center">
           <p>WebRTC connection enabled</p>
           <button
-            className="block mx-auto mt-4 px-4 py-2 bg-red-500 text-white rounded"
+            className="mx-auto mt-4 block rounded bg-red-500 px-4 py-2 text-white"
             onClick={() => setEnable(false)}
           >
             Stop
@@ -170,9 +171,9 @@ function App() {
         </div>
       )}
       {!enable && (
-        <div className="flex mt-4">
+        <div className="mt-4 flex">
           <button
-            className="block mx-auto mt-4 px-4 py-2 bg-green-500 text-white rounded"
+            className="mx-auto mt-4 block rounded bg-green-500 px-4 py-2 text-white"
             onClick={() => setEnable(true)}
           >
             Start
@@ -182,5 +183,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
