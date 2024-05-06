@@ -8,6 +8,7 @@ export const getUserByUsername = async (username: string) => {
     where: { username },
     include: {
       followedBy: self ? { where: { followerId: self.id } } : undefined,
+      stream: true,
     },
   });
 
