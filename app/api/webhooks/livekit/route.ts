@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
   let event;
   try {
-    event = receiver.receive(body, authorization);
+    event = await receiver.receive(body, authorization);
   } catch (error) {
     console.error("Error receiving event", error);
     return new Response("No authorization header", { status: 400 });
