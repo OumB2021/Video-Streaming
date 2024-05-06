@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
+import { db } from "@/lib/db";
 
 import { cn } from "@/lib/utils";
 import { LiveBadge } from "./live-badge";

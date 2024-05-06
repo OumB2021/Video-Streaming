@@ -14,45 +14,42 @@ export async function POST(req: Request) {
   const authorization = headerPayload.get("Authorization");
 
   if (!authorization) {
-    return new Response("No authorization header", { status: 400 });
+    return new Response("No authorization header", { status: 401 });
   }
+  const evt = await receiver.receive(body, authorization);
 
-  let event;
-  try {
-    event = receiver.receive(body, authorization);
-  } catch (error) {
-    console.error("Error receiving event", error);
-    return new Response("No authorization header", { status: 400 });
-  }
-
-  if (!event) {
-    return new Response("Webhook not parsed", { status: 400 });
+  if (!evt) {
+    console.log("is the error here ?");
+    return new Response("Webhook not parsed", { status: 422 });
   }
 
   try {
-    if (event.event === "ingress_started") {
+    if (evt.event === "ingress_started") {
       await db.stream.update({
         where: {
-          ingressId: event.ingressInfo?.ingressId,
+          ingressId: evt.ingressInfo?.ingressId,
         },
         data: {
           isLive: true,
         },
       });
-    } else if (event.event === "ingress_ended") {
+    } else if (evt.event === "ingress_ended") {
       await db.stream.update({
         where: {
-          ingressId: event.ingressInfo?.ingressId,
+          ingressId: evt.ingressInfo?.ingressId,
         },
         data: {
           isLive: false,
         },
       });
+    } else {
+      return new Response("Unused even type", { status: 400 });
     }
   } catch (dbError) {
     console.error("Database error", dbError);
     return new Response("Failed to update database", { status: 500 });
   }
 
+  console.log("Ingress Id: ", evt.ingressInfo?.ingressId);
   return new Response("Operation was successfull", { status: 200 });
 }
