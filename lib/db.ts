@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { env } from "./env";
 
 // Ensure TypeScript recognizes the custom global variable
 declare global {
@@ -9,6 +10,6 @@ declare global {
 export const db = global.prisma || new PrismaClient();
 
 // In non-production environments, reuse the same Prisma client
-if (process.env.NODE_ENV !== "production") {
+if (env.NODE_ENV !== "production") {
   global.prisma = db;
 }

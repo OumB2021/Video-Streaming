@@ -2,6 +2,7 @@
 
 import { getSelf } from "@/lib/auth-service";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import {
   IngressAudioEncodingPreset,
   IngressInput,
@@ -14,12 +15,12 @@ import {
 import { revalidatePath } from "next/cache";
 
 const roomService = new RoomServiceClient(
-  process.env.LIVEKIT_API_URL!,
-  process.env.LIVEKIT_API_KEY!,
-  process.env.LIVEKIT_API_SECRET!
+  env.LIVEKIT_API_URL,
+  env.LIVEKIT_API_KEY,
+  env.LIVEKIT_API_SECRET
 );
 
-const ingressClient = new IngressClient(process.env.LIVEKIT_API_URL!);
+const ingressClient = new IngressClient(env.LIVEKIT_API_URL);
 
 export const resetIngresses = async (hostIdentity: string) => {
   const ingresses = await ingressClient.listIngress({
