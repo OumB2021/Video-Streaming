@@ -34,6 +34,8 @@
     "query-string": "^9.0.0",
     "react": "^18",
     "react-dom": "^18",
+    "shared": "*",
+    "socket.io-client": "^4.7.5",
     "sonner": "^1.4.41",
     "svix": "^1.21.0",
     "tailwind-merge": "^2.3.0",

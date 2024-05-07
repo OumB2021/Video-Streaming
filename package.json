@@ -13,7 +13,8 @@
   "license": "ISC",
   "workspaces": [
     "client",
-    "server"
+    "server",
+    "shared"
   ],
   "devDependencies": {
     "turbo": "^1.13.0"
