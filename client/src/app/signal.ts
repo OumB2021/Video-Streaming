@@ -1,7 +1,9 @@
 export type SignalMessage =
   | { src: string; type: "answer"; payload: RTCSessionDescriptionInit }
   | { src: string; type: "offer"; payload: RTCSessionDescriptionInit }
-  | { src: string; type: "iceCandidate"; payload: RTCIceCandidate };
+  | { src: string; type: "iceCandidate"; payload: RTCIceCandidate }
+  | { src: string; type: "joined"; payload: undefined }
+  | { src: string; type: "left"; payload: undefined };
 
 type IDSignalMessage = { src: "server"; type: "id"; payload: string };
 type QueuedSignalMessage = Omit<SignalMessage, "src">;
@@ -18,7 +20,7 @@ export class SignalClient {
   private queue: QueuedSignalMessage[] = [];
 
   constructor() {
-    this.ws = new WebSocket("ws://localhost:3001/api/ws");
+    this.ws = new WebSocket("ws://192.168.1.70:3001/api/ws");
 
     this.ws.addEventListener("message", (ev) => {
       const data = JSON.parse(ev.data as string) as

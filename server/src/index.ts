@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createBunWebSocket } from "hono/bun";
-import type { WSContext, WSMessageReceive } from "hono/ws";
+import type { WSContext } from "hono/ws";
 import { nanoid } from "nanoid";
 
 const { upgradeWebSocket, websocket } = createBunWebSocket();
@@ -8,7 +8,7 @@ const { upgradeWebSocket, websocket } = createBunWebSocket();
 const clients = new Map<string, WSContext>();
 
 const offerQueue = new Map<string, RTCSessionDescriptionInit>();
-const iceQueue = new Map<string, RTCIceCandidateInit[]>();
+const iceCandidatesQueue = new Map<string, RTCIceCandidateInit[]>();
 
 const app = new Hono().basePath("/api");
 
@@ -24,31 +24,41 @@ app.get(
     return {
       onOpen: (ev, ws) => {
         console.log(`${id}: WebSocket connection opened`);
+        for (const [clientId, client] of clients.entries()) {
+          console.log(`${id}:     Sending join message to ${clientId}`);
+          client.send(
+            JSON.stringify({
+              src: id,
+              type: "joined",
+              payload: id,
+            })
+          );
+        }
         clients.set(id, ws);
         ws.send(
           JSON.stringify({
             src: "server",
             type: "id",
             payload: id,
-          }),
+          })
         );
         for (const [clientId, offer] of offerQueue.entries()) {
           if (id === clientId) continue;
           console.log(`${id}:     Sending queued offer from ${clientId}`);
           ws.send(JSON.stringify(offer));
         }
-        for (const [clientId, ices] of iceQueue.entries()) {
+        for (const [clientId, iceCandidates] of iceCandidatesQueue.entries()) {
           if (id === clientId) continue;
           console.log(
-            `${id}:     Sending queued ICE candidates from ${clientId}`,
+            `${id}:     Sending queued ICE candidates from ${clientId}`
           );
-          for (const ice of ices) {
+          for (const candidate of iceCandidates) {
             ws.send(
               JSON.stringify({
-                src: clientId,
+                src: "server",
                 type: "iceCandidate",
-                payload: ice,
-              }),
+                payload: candidate,
+              })
             );
           }
         }
@@ -58,14 +68,12 @@ app.get(
         const data = JSON.parse(e.data.toString());
         if (data.type === "offer") {
           offerQueue.set(id, data);
-          return;
         }
         if (data.type === "iceCandidate") {
-          if (!iceQueue.has(id)) {
-            iceQueue.set(id, []);
+          if (!iceCandidatesQueue.has(id)) {
+            iceCandidatesQueue.set(id, []);
           }
-          iceQueue.get(id)!.push(data.payload);
-          return;
+          iceCandidatesQueue.get(id)!.push(data.payload);
         }
         for (const [clientId, client] of clients.entries()) {
           if (id === clientId) continue;
@@ -77,10 +85,20 @@ app.get(
         console.log(`${id}: WebSocket connection closed`);
         clients.delete(id);
         offerQueue.delete(id);
-        iceQueue.delete(id);
+        iceCandidatesQueue.delete(id);
+        for (const [clientId, client] of clients.entries()) {
+          console.log(`${id}:     Sending close message to ${clientId}`);
+          client.send(
+            JSON.stringify({
+              src: "server",
+              type: "left",
+              payload: id,
+            })
+          );
+        }
       },
     };
-  }),
+  })
 );
 
 const port = 3001;
