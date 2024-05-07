@@ -20,3 +20,14 @@ export const getUserByUsername = async (username: string) => {
     isFollowing: followedBy ? followedBy.length > 0 : false,
   };
 };
+
+export const getUserById = async (id: string) => {
+  const user = await db.user.findUnique({
+    where: { id },
+    include: {
+      stream: true,
+    },
+  });
+
+  return user;
+};
