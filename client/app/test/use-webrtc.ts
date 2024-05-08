@@ -48,6 +48,11 @@ export function useWebRTC() {
         rtc.addIceCandidate(candidate);
       });
 
+      socket.on("disconnect", () => {
+        console.log("Received close from server");
+        close();
+      });
+
       setSignalStatus("connected");
 
       rtc.ontrack = (event) => {
@@ -110,6 +115,7 @@ export function useWebRTC() {
       }
       localVideo.current!.srcObject = null;
       remoteVideo.current!.srcObject = null;
+      setIsActive(false);
     };
 
     connect().catch((error) => {
