@@ -6,7 +6,7 @@ export type RTCOfferEvent = ["offer", RTCSessionDescriptionInit];
 
 export type RTCAnswerEvent = ["answer", RTCSessionDescriptionInit];
 
-export type RTCCandidateEvent = ["candidate", RTCIceCandidate];
+export type RTCCandidateEvent = ["ice-candidate", RTCIceCandidateInit];
 
 export type RTCEvent = RTCOfferEvent | RTCAnswerEvent | RTCCandidateEvent;
 export type RTCEventType = RTCEvent[0];
@@ -18,5 +18,5 @@ export type RTCEventPayload<T extends RTCEventType> = Extract<
 export type RTCEventMap = {
   offer: (payload: RTCSessionDescriptionInit) => void;
   answer: (payload: RTCSessionDescriptionInit) => void;
-  candidate: (payload: RTCIceCandidate) => void;
+  "ice-candidate": (payload: RTCIceCandidateInit) => void;
 };

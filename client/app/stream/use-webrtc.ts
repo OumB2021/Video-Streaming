@@ -34,16 +34,16 @@ export function useWebRTC() {
         });
       });
 
-      socket.on("offer", (offer: RTCSessionDescriptionInit) => {
+      socket.on("offer", (offer) => {
         console.log("Received offer from server", offer);
       });
 
-      socket.on("answer", (answer: RTCSessionDescriptionInit) => {
+      socket.on("answer", (answer) => {
         console.log("Received answer from server", answer);
         rtc.setRemoteDescription(answer);
       });
 
-      socket.on("candidate", (candidate: RTCIceCandidate) => {
+      socket.on("ice-candidate", (candidate) => {
         console.log("Received candidate from server", candidate);
         rtc.addIceCandidate(candidate);
       });
@@ -61,7 +61,7 @@ export function useWebRTC() {
       };
       rtc.onicecandidate = (event) => {
         if (event.candidate) {
-          socket.send("candidate", event.candidate);
+          socket.emit("ice-candidate", event.candidate);
         }
       };
       rtc.oniceconnectionstatechange = () => {

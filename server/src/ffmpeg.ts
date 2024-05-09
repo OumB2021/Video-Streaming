@@ -1,132 +1,208 @@
-import ffmpeg from "fluent-ffmpeg";
+"use strict";
+
+import { PassThrough } from "stream";
+import fs from "fs";
 import wrtc from "@roamhq/wrtc";
-import { Readable, Stream } from "stream";
-import * as fs from "fs";
-import { exec } from "child_process";
-import assert from "assert";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import ffmpeg from "fluent-ffmpeg";
+import { StreamInput } from "fluent-ffmpeg-multistream";
 import { join } from "path";
 
-function trackToStream(
-  track: MediaStreamTrack,
-  type: "video" | "audio"
-): Readable {
-  const readable = new Readable({
-    read() {},
-  });
+const { RTCAudioSink, RTCVideoSink } = wrtc.nonstandard;
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
-  const source = new wrtc.nonstandard.RTCVideoSource();
-  const sink =
-    type === "video"
-      ? new wrtc.nonstandard.RTCVideoSink(track)
-      : new wrtc.nonstandard.RTCAudioSink(track);
+export type AudioDataEvent = {
+  samples: Int16Array;
+  bitsPerSample: number;
+  sampleRate: number;
+  channelCount: number;
+  numberOfFrames: number;
+  type: "data";
+};
 
-  sink.addEventListener("frame", (event) => {
-    // console.log("frame", event);
-    readable.push(event.data);
-  });
+export type VideoFrameEvent = {
+  type: "frame";
+  frame: {
+    width: number;
+    height: number;
+    rotation: number;
+    data: Uint8Array;
+  };
+};
 
-  sink.addEventListener("end", () => {
-    readable.push(null);
-  });
+export type BeforeOfferOptions = {
+  peerConnection: wrtc.RTCPeerConnection;
+  videoTrack: wrtc.MediaStreamTrack;
+  audioTrack: wrtc.MediaStreamTrack;
+};
 
-  return readable;
-}
+export class StreamHandler {
+  path: string;
+  size: string;
+  private video = new PassThrough();
+  private audio = new PassThrough();
 
-function makePromise<T>() {
-  let resolve: ((value: T) => void) | undefined;
-  let reject: ((reason: any) => void) | undefined;
+  streamingEnded = false;
+  processingEnded = false;
 
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
+  constructor({
+    event,
+    outputPath,
+    audioSink,
+  }: {
+    event: VideoFrameEvent;
+    outputPath: string;
+    audioSink: wrtc.nonstandard.RTCAudioSink;
+  }) {
+    const {
+      frame: { width, height },
+    } = event;
+    this.size = width + "x" + height;
 
-  assert(resolve, "Missing resolve");
-  assert(reject, "Missing reject");
+    this.attachAudioSink(audioSink);
 
-  return { promise, resolve, reject };
-}
-
-export function processIncomingStreamToHLS(mediaStream: wrtc.MediaStream) {
-  const videoTrack = mediaStream.getVideoTracks()[0];
-  const audioTrack = mediaStream.getAudioTracks()[0];
-  const { promise, resolve, reject } = makePromise<string>();
-
-  const hlsDir = fs.mkdtempSync("hls-");
-
-  const inputStream = trackToStream(videoTrack, "video");
-  const inputStreamPath = join(process.cwd(), `${hlsDir}/input.mp4`);
-  const inputStreamFile = fs.createWriteStream(inputStreamPath);
-
-  inputStreamFile.on("ready", () => {
-    console.log("inputStreamFile ready");
-    inputStream
-      .pipe(inputStreamFile)
-      .on("error", (err) => {
-        console.error("error", err);
+    const command = ffmpeg()
+      .addInput(new StreamInput(this.video).url)
+      .inputFormat("rawvideo")
+      .addInputOptions([
+        "-f rawvideo",
+        "-pix_fmt yuv420p",
+        "-r 30",
+        `-s ${this.size}`,
+      ])
+      .addInput(new StreamInput(this.audio).url)
+      .addInputOptions(["-f s16le", "-ar 48k", "-ac 1"])
+      .videoCodec("libx264") // Video codec for output
+      .audioCodec("aac") // Audio codec for output
+      .size("1280x?") // Scale video to width of 1280 pixels, maintain aspect ratio
+      .outputOptions([
+        "-preset veryfast", // Fast encoding
+        "-crf 23", // Constant rate factor for quality
+        "-sc_threshold 0", // Scene change threshold (set to 0 for continuous scenes)
+        "-g 48", // Keyframe interval
+        "-b:v 800k", // Video bitrate
+        "-b:a 128k", // Audio bitrate
+        "-maxrate 856k", // Max bitrate
+        "-bufsize 1200k", // Buffer size
+        "-hls_time 4", // Duration of each segment
+        "-hls_list_size 0", // Max number of playlist entries
+        "-hls_flags delete_segments", // Delete segments older than playlist
+      ])
+      .on("start", () => {
+        console.log("Start recording >> ", outputPath);
       })
-      .on("close", () => {
-        console.log("inputStreamFile closed");
-      });
+      .on("end", () => {
+        this.processingEnded = true;
+        console.log("Stop recording >> ", outputPath);
+      })
+      .output(outputPath);
 
-    const command = `ffmpeg -i ${inputStreamPath} -c:v libx264 -c:a aac -f hls -hls_time 2 -hls_list_size 5 -hls_flags delete_segments ${hlsDir}/stream.m3u8`;
-    exec(command, (err, stdout, stderr) => {
-      console.log("[ffmpeg]", stdout);
-      console.error("[ffmpeg]", stderr);
-      if (err) {
-        videoTrack.stop();
-        audioTrack?.stop();
-        fs.rmSync(hlsDir, { recursive: true });
-        reject(err);
+    command.run();
+
+    this.path = outputPath;
+  }
+
+  isCompatible(event: VideoFrameEvent) {
+    return this.size === event.frame.width + "x" + event.frame.height;
+  }
+
+  pushVideoFrame(event: VideoFrameEvent) {
+    this.video.push(Buffer.from(event.frame.data));
+  }
+
+  end() {
+    this.audio.end();
+    this.video.end();
+    this.streamingEnded = true;
+  }
+
+  private attachAudioSink(audioSink: wrtc.nonstandard.RTCAudioSink) {
+    const handleAudioData = (untypedEvent: unknown) => {
+      const event = untypedEvent as AudioDataEvent;
+      if (!this.streamingEnded) {
+        this.audio.push(Buffer.from(event.samples.buffer));
       }
-      resolve(hlsDir);
+    };
+
+    audioSink.addEventListener("data", handleAudioData);
+
+    this.audio.on("end", () => {
+      audioSink.removeEventListener("data", handleAudioData);
     });
-  });
-
-  return promise;
-  // const ffmpegCommand = ffmpeg()
-  //   .input(trackToStream(videoTrack, "video"))
-  //   .inputFormat("h264") // Specify input format if necessary
-  //   .outputOptions([
-  //     "-map 0", // Ensure the correct stream is selected
-  //     "-f hls", // Output format
-  //     "-hls_time 2", // Segment length
-  //     "-hls_list_size 5", // Max amount of playlist entries
-  //     "-hls_flags delete_segments", // Delete old segments
-  //   ])
-  //   .output(`${hlsDir}/stream.m3u8`);
-
-  // if (audioTrack) {
-  // ffmpegCommand
-  //   .input(trackToStream(audioTrack, "audio"))
-  //   .inputOptions("-i", "-")
-  //   .outputOptions("-c:a", "aac");
-  // }
-
-  // return new Promise<string>((resolve, reject) => {
-  //   ffmpegCommand.on("end", () => resolve(hlsDir));
-  //   ffmpegCommand.on("error", (err) => {
-  //     videoTrack.stop();
-  //     audioTrack?.stop();
-  //     fs.rmSync(hlsDir, { recursive: true });
-  //     reject(err);
-  //   });
-  //   ffmpegCommand.on("close", (code) =>
-  //     console.log(`FFmpeg exited with code ${code}`)
-  //   );
-  //   ffmpegCommand.run();
-  // });
-
-  // const videoStream = trackToStream(videoTrack, "video").pipe(tempStreamFile);
-  // const ffmpegCommand = `ffmpeg -f rtp -i ${tempStreamFilePath} -c:v libx264 -stimeout -f flv rtmp://localhost/live/stream`;
-  // exec(ffmpegCommand)
-  //   .on("stdout", (data) => console.log(data))
-  //   .on("stderr", (data) => console.error(data))
-  //   .on("close", (code) => {
-  //     console.log(`FFmpeg exited with code ${code}`);
-  //   })
-  //   .on("error", (err) => {
-  //     console.error(`Error: ${err}`);
-  //     fs.rmSync(hlsDir, { recursive: true });
-  //   });
+  }
 }
+
+function beforeOffer({
+  peerConnection,
+  videoTrack,
+  audioTrack,
+}: BeforeOfferOptions) {
+  const audioSink = new RTCAudioSink(audioTrack);
+  const videoSink = new RTCVideoSink(videoTrack);
+
+  let index = 0;
+  const streams = [] as StreamHandler[];
+
+  const directory = join(process.cwd(), "recordings");
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory);
+  }
+
+  videoSink.onframe = (event: VideoFrameEvent) => {
+    if (streams[0] && streams[0].isCompatible(event)) {
+      streams[0].pushVideoFrame(event);
+      return;
+    }
+
+    const handler = new StreamHandler({
+      event,
+      outputPath: join(directory, `recording-${index}.m3u8`),
+      audioSink,
+    });
+
+    index++;
+
+    streams.unshift(handler);
+
+    streams.forEach((stream) => {
+      if (stream !== handler && !stream.streamingEnded) {
+        stream.end();
+      }
+    });
+
+    handler.pushVideoFrame(event);
+  };
+
+  const { close } = peerConnection;
+  peerConnection.close = async function (...parameters) {
+    console.log("close");
+    audioSink.stop();
+    videoSink.stop();
+
+    streams.forEach((stream) => {
+      if (!stream.streamingEnded) {
+        stream.end();
+      }
+    });
+
+    if (!streams.every((stream) => stream.processingEnded)) {
+      await new Promise<void>((resolve) => {
+        const interval = setInterval(() => {
+          console.log(
+            "Waiting for all streams to end",
+            streams.every((stream) => stream.processingEnded)
+          );
+          if (streams.every((stream) => stream.processingEnded)) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 1000);
+      });
+    }
+
+    console.log("done");
+
+    return close.apply(this, ...parameters);
+  };
+}
+export { beforeOffer };
