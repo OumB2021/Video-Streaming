@@ -10,6 +10,8 @@
     "format": {
       "cache": false
     },
-    "typecheck": {}
+    "typecheck": {},
+    "db:push": { "cache": false },
+    "db:generate": { "cache": false }
   }
 }

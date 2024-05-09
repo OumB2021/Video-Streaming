@@ -6,15 +6,15 @@
   "scripts": {
     "dev": "turbo run dev",
     "format": "turbo run format",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:push": "turbo run db:push",
+    "db:generate": "turbo run db:generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "workspaces": [
-    "client",
-    "server",
-    "shared"
+    "packages/*"
   ],
   "devDependencies": {
     "turbo": "^1.13.0"
