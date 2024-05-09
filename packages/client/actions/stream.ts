@@ -28,6 +28,7 @@ export const updateStream = action(StreamSchema, async (values, { self }) => {
       id: selfStream.id,
     },
     data: {
+      thumbnailUrl: values.thumbnailUrl,
       name: values.name,
       isChatEnabled: values.isChatEnabled,
       isChatFollowersOnly: values.isChatFollowersOnly,

@@ -1,6 +1,8 @@
 import { getUserByUsername } from "@/lib/user-service";
 import { notFound } from "next/navigation";
 import { Actions } from "./_components/actions";
+import { isFollowingUser } from "@/lib/follow-service";
+import { StreamPlayer } from "@/components/stream-player";
 
 interface UserPageProps {
   params: {
@@ -11,17 +13,13 @@ interface UserPageProps {
 const UserPage = async ({ params }: UserPageProps) => {
   const user = await getUserByUsername(params.username);
 
-  if (!user) {
+  if (!user || !user.stream) {
     notFound();
   }
 
+  const isFollowing = await isFollowingUser(user.id);
   return (
-    <div className="flex flex-col g-y-4">
-      <p>username: {user.username}</p>
-      <p>user id : {user.id}</p>
-      <p>is following: {`${user.isFollowing}`}</p>
-      <Actions userId={user.id} isFollowing={user.isFollowing} />
-    </div>
+    <StreamPlayer user={user} stream={user.stream} isFollowing={isFollowing} />
   );
 };
 
