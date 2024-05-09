@@ -7,6 +7,7 @@ import {
 import { UserAvatar } from "../user-avatar";
 import { VerifiedMark } from "../verified-mark";
 import { UserIcon } from "lucide-react";
+import { Actions } from "./actions";
 
 interface HeaderProps {
   hostName: string;
@@ -63,6 +64,11 @@ export const Header = ({
           )}
         </div>
       </div>
+      <Actions
+        isFollowing={isFollowing}
+        hostIdentity={hostIdentity}
+        isHost={isHost}
+      />
     </div>
   );
 };
