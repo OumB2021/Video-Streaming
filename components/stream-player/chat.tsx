@@ -55,7 +55,6 @@ export const Chat = ({
 
   const onSubmit = () => {
     if (!send) return;
-
     send(value);
     setValue("");
   };
