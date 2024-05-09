@@ -9,6 +9,7 @@ import { ConnectionState, Track } from "livekit-client";
 import { OfflineVideo } from "./offline-video";
 import { LoadingVideo } from "./loading-video";
 import { LiveVideo } from "./live-video";
+import { Skeleton } from "../ui/skeleton";
 
 interface VideoProps {
   hostName: string;
@@ -18,7 +19,6 @@ interface VideoProps {
 export const Video = ({ hostName, hostIdentity }: VideoProps) => {
   const connectionState = useConnectionState();
   const participant = useRemoteParticipant(hostIdentity);
-  console.log(`what is participant: ${participant}`);
 
   const tracks = useTracks([
     Track.Source.Camera,
@@ -35,4 +35,12 @@ export const Video = ({ hostName, hostIdentity }: VideoProps) => {
     content = <LiveVideo participant={participant} />;
   }
   return <div className="aspect-video border-b group relative">{content}</div>;
+};
+
+export const VideoSkeleton = () => {
+  return (
+    <div className="aspect-video border-x border-background">
+      <Skeleton className="h-full w-full rounded-none" />
+    </div>
+  );
 };
