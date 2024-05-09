@@ -50,6 +50,7 @@ export default class RTCHandler {
       if (this.peerConnection.connectionState === "connected") {
         this.peerConnection.close();
       }
+      this.endStream();
     });
 
     this.socket.on("error", (error) => {
@@ -61,7 +62,7 @@ export default class RTCHandler {
     this.peerConnection.onicecandidate = (event) => {
       console.log(
         `[rtc][${this.socket.id}] ice candidate via peer connection:`,
-        event.candidate
+        event.candidate,
       );
       if (event.candidate) {
         this.socket.emit("ice-candidate", event.candidate);
@@ -71,7 +72,7 @@ export default class RTCHandler {
     this.peerConnection.onconnectionstatechange = () => {
       console.log(
         `[rtc][${this.socket.id}] connection state changed:`,
-        this.peerConnection.connectionState
+        this.peerConnection.connectionState,
       );
     };
 
@@ -123,7 +124,7 @@ export default class RTCHandler {
   private handleFrame(event: VideoFrameEvent) {
     if (!this.videoSink || !this.audioSink) {
       throw new Error(
-        `[rtc][${this.socket.id}] missing audio and/or video sink`
+        `[rtc][${this.socket.id}] missing audio and/or video sink`,
       );
     }
 
@@ -132,17 +133,19 @@ export default class RTCHandler {
       return;
     }
 
+    const segmentFileCount = fs
+      .readdirSync(this.outputDir)
+      .filter((file) => file.endsWith(".ts")).length;
+
     const streamHandler = new StreamHandler({
       event,
-      outputPath: join(
-        this.outputDir,
-        `${this.streamHandlers.length}-stream-.m3u8`
-      ),
+      output: this.outputDir,
       audioSink: this.audioSink,
+      currentSegmentIndex: segmentFileCount,
     });
 
     console.log(
-      `[rtc][${this.socket.id}] created stream handler ${this.streamHandlers.length} with size ${streamHandler.size}`
+      `[rtc][${this.socket.id}] created stream handler ${this.streamHandlers.length} with size ${streamHandler.size}, resuming at ${segmentFileCount}`,
     );
 
     this.streamHandlers.forEach((handler) => {
@@ -154,5 +157,11 @@ export default class RTCHandler {
     this.streamHandlers.unshift(streamHandler);
 
     streamHandler.pushVideoFrame(event);
+  }
+
+  private async endStream() {
+    if (this.streamHandlers[0] && !this.streamHandlers[0].streamingEnded) {
+      this.streamHandlers[0].pushVideoFrame(null);
+    }
   }
 }

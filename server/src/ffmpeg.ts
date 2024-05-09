@@ -4,6 +4,7 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import wrtc from "@roamhq/wrtc";
 import ffmpeg from "fluent-ffmpeg";
 import { StreamInput } from "fluent-ffmpeg-multistream";
+import { join } from "path";
 import { PassThrough } from "stream";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -44,12 +45,14 @@ export class StreamHandler {
 
   constructor({
     event,
-    outputPath,
+    output,
     audioSink,
+    currentSegmentIndex,
   }: {
     event: VideoFrameEvent;
-    outputPath: string;
+    output: string;
     audioSink: wrtc.nonstandard.RTCAudioSink;
+    currentSegmentIndex: number;
   }) {
     const {
       frame: { width, height },
@@ -57,6 +60,8 @@ export class StreamHandler {
     this.size = width + "x" + height;
 
     this.attachAudioSink(audioSink);
+
+    const m3u8Path = join(output, "stream.m3u8");
 
     const command = ffmpeg()
       .addInput(new StreamInput(this.video).url)
@@ -81,30 +86,42 @@ export class StreamHandler {
         "-b:a 128k", // Audio bitrate
         "-maxrate 856k", // Max bitrate
         "-bufsize 1200k", // Buffer size
-        "-hls_time 4", // Duration of each segment
+        "-hls_time 2", // Duration of each segment
         "-hls_list_size 0", // Max number of playlist entries
-        "-hls_flags delete_segments", // Delete segments older than playlist
+        `-start_number ${currentSegmentIndex}`, // Resume segment number at given index
+        `-hls_segment_filename ${join(output, "segment-%03d.ts")}`, // Name of the segment file
+        "-hls_flags append_list", // Delete segments older than playlist
       ])
       .on("start", () => {
-        console.log("Start recording >> ", outputPath);
+        console.log("[ffmpeg] Start recording >> ", m3u8Path);
+      })
+      .on("stdout", (data) => {
+        console.log("[ffmpeg] stdout", data);
+      })
+      .on("stderr", (data) => {
+        console.error("[ffmpeg] stderr", data);
       })
       .on("end", () => {
         this.processingEnded = true;
-        console.log("Stop recording >> ", outputPath);
+        console.log("[ffmpeg] Stop recording >> ", m3u8Path);
       })
-      .output(outputPath);
+      .output(m3u8Path);
 
     command.run();
 
-    this.path = outputPath;
+    this.path = m3u8Path;
   }
 
   isCompatible(event: VideoFrameEvent) {
     return this.size === event.frame.width + "x" + event.frame.height;
   }
 
-  pushVideoFrame(event: VideoFrameEvent) {
-    this.video.push(Buffer.from(event.frame.data));
+  pushVideoFrame(event: VideoFrameEvent | null) {
+    if (event) {
+      this.video.push(Buffer.from(event.frame.data));
+    } else {
+      this.video.push(null);
+    }
   }
 
   end() {

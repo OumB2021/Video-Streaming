@@ -13,7 +13,7 @@ app.use(
   helmet({
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
-  })
+  }),
 );
 
 const server = http.createServer(app);
@@ -36,7 +36,7 @@ app.get("/list", (req, res) => {
     .map((dir) =>
       readdirSync(join("output", dir))
         .filter((file) => file.endsWith(".m3u8"))
-        .map((file) => join(dir, file))
+        .map((file) => join(dir, file)),
     )
     .flat();
   console.log(files);
