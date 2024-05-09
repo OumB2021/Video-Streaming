@@ -1,25 +1,10 @@
-"use client";
+import { Metadata } from "next";
+import Stream from "./stream";
 
-import { useWebRTC } from "./use-webrtc";
+export const metadata: Metadata = {
+  title: "Stream",
+};
 
 export default function Page() {
-  const {
-    isActive,
-    start,
-    stop,
-    localVideo,
-    remoteVideo,
-    signalStatus,
-    rtcStatus,
-  } = useWebRTC();
-
-  return (
-    <div>
-      <button onClick={start}>Start</button>
-      <button onClick={stop}>Stop</button>
-      <p>{JSON.stringify({ isActive, signalStatus, rtcStatus })}</p>
-      <video ref={localVideo} autoPlay muted></video>
-      <video ref={remoteVideo} autoPlay></video>
-    </div>
-  );
+  return <Stream />;
 }

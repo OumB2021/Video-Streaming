@@ -6,6 +6,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { StreamInput } from "fluent-ffmpeg-multistream";
 import { join } from "path";
 import { PassThrough } from "stream";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
@@ -67,17 +68,11 @@ export class StreamHandler {
 
     const defaultOptions = {
       preset: "veryfast",
-      // crf: 23,
       sc_threshold: 0,
       g: 48,
-      // "b:v": "800k",
-      // "b:a": "128k",
-      // maxrate: "856k",
-      // bufsize: "1200k",
       hls_time: 2,
       hls_list_size: 10,
       start_number: currentSegmentIndex,
-      hls_segment_filename: join(output, "segment-1920-%03d.ts"),
       hls_flags: "delete_segments+append_list",
     };
 
@@ -88,7 +83,6 @@ export class StreamHandler {
         "b:a": "128k",
         maxrate: "6750k",
         bufsize: "13500k",
-        hls_segment_filename: join(output, "segment-1920-%03d.ts"),
       },
       1280: {
         crf: 22,
@@ -96,7 +90,6 @@ export class StreamHandler {
         "b:a": "128k",
         maxrate: "4500k",
         bufsize: "7500k",
-        hls_segment_filename: join(output, "segment-1280-%03d.ts"),
       },
       960: {
         crf: 24,
@@ -104,7 +97,6 @@ export class StreamHandler {
         "b:a": "128k",
         maxrate: "3000k",
         bufsize: "6000k",
-        hls_segment_filename: join(output, "segment-960-%03d.ts"),
       },
       640: {
         crf: 26,
@@ -112,7 +104,6 @@ export class StreamHandler {
         "b:a": "128k",
         maxrate: "2000k",
         bufsize: "4000k",
-        hls_segment_filename: join(output, "segment-640-%03d.ts"),
       },
       320: {
         crf: 28,
@@ -120,7 +111,6 @@ export class StreamHandler {
         "b:a": "128k",
         maxrate: "1000k",
         bufsize: "2000k",
-        hls_segment_filename: join(output, "segment-320-%03d.ts"),
       },
     };
 
@@ -135,90 +125,42 @@ export class StreamHandler {
       ])
       .addInput(new StreamInput(this.audio).url)
       .addInputOptions(["-f s16le", "-ar 48k", "-ac 1"])
-      .videoCodec("libx264") // Video codec for output
-      .audioCodec("aac"); // Audio codec for output
+      .videoCodec("libx264")
+      .audioCodec("aac");
 
-    console.log(formatOptions(defaultOptions));
+    for (const [resolution, resolutionOptions] of Object.entries(
+      resolutionsOptions,
+    )) {
+      const resolutionPath = join(output, resolution);
+      if (!existsSync(resolutionPath)) {
+        mkdirSync(resolutionPath);
+      }
 
-    for (const [resolution, resolutionOptions] of Object.entries(resolutionsOptions)) {
       const options = formatOptions({
         ...defaultOptions,
         ...resolutionOptions,
+        hls_segment_filename: join(resolutionPath, "segment-%03d.ts"),
       });
       command
-        .output(join(output, `${resolution}.m3u8`))
+        .output(join(resolutionPath, "index.m3u8"))
         .size(`${resolution}x?`)
         .outputOptions(options);
     }
 
-    // .output(join(output, "stream-1920.m3u8"))
-    // .size("1920x?") // Scale video to width of 1920 pixels, maintain aspect ratio
-    // .outputOptions([
-    //   "-preset veryfast", // Fast encoding
-    //   "-crf 23", // Constant rate factor for quality
-    //   "-sc_threshold 0", // Scene change threshold (set to 0 for continuous scenes)
-    //   "-g 48", // Keyframe interval
-    //   "-b:v 800k", // Video bitrate
-    //   "-b:a 128k", // Audio bitrate
-    //   "-maxrate 856k", // Max bitrate
-    //   "-bufsize 1200k", // Buffer size
-    //   "-hls_time 2", // Duration of each segment
-    //   "-hls_list_size 10", // Max number of playlist entries
-    //   `-start_number ${currentSegmentIndex}`, // Resume segment number at given index
-    //   `-hls_segment_filename ${join(output, "segment-1920-%03d.ts")}`, // Name of the segment file
-    //   "-hls_flags delete_segments+append_list", // Delete segments older than playlist
-    // ])
-    // .output(join(output, "stream-1280.m3u8"))
-    // .size("1280x?") // Scale video to width of 1280 pixels, maintain aspect ratio
-    // .outputOptions([
-    //   "-preset veryfast", // Fast encoding
-    //   "-crf 23", // Constant rate factor for quality
-    //   "-sc_threshold 0", // Scene change threshold (set to 0 for continuous scenes)
-    //   "-g 48", // Keyframe interval
-    //   "-b:v 800k", // Video bitrate
-    //   "-b:a 128k", // Audio bitrate
-    //   "-maxrate 856k", // Max bitrate
-    //   "-bufsize 1200k", // Buffer size
-    //   "-hls_time 2", // Duration of each segment
-    //   "-hls_list_size 10", // Max number of playlist entries
-    //   `-start_number ${currentSegmentIndex}`, // Resume segment number at given index
-    //   `-hls_segment_filename ${join(output, "segment-1280-%03d.ts")}`, // Name of the segment file
-    //   "-hls_flags delete_segments+append_list", // Delete segments older than playlist
-    // ])
-    // .size("640x?")
-    // .output(join(output, "stream-640.m3u8"))
-    // .outputOptions([
-    //   "-preset veryfast", // Fast encoding
-    //   "-crf 23", // Constant rate factor for quality
-    //   "-sc_threshold 0", // Scene change threshold (set to 0 for continuous scenes)
-    //   "-g 48", // Keyframe interval
-    //   "-b:v 800k", // Video bitrate
-    //   "-b:a 128k", // Audio bitrate
-    //   "-maxrate 856k", // Max bitrate
-    //   "-bufsize 1200k", // Buffer size
-    //   "-hls_time 2", // Duration of each segment
-    //   "-hls_list_size 10", // Max number of playlist entries
-    //   `-start_number ${currentSegmentIndex}`, // Resume segment number at given index
-    //   `-hls_segment_filename ${join(output, "segment-640-%03d.ts")}`, // Name of the segment file
-    //   "-hls_flags delete_segments+append_list", // Delete segments older than playlist
-    // ])
-    // .size("320x?")
-    // .output(join(output, "stream-320.m3u8"))
-    // .outputOptions([
-    //   "-preset veryfast", // Fast encoding
-    //   "-crf 23", // Constant rate factor for quality
-    //   "-sc_threshold 0", // Scene change threshold (set to 0 for continuous scenes)
-    //   "-g 48", // Keyframe interval
-    //   "-b:v 800k", // Video bitrate
-    //   "-b:a 128k", // Audio bitrate
-    //   "-maxrate 856k", // Max bitrate
-    //   "-bufsize 1200k", // Buffer size
-    //   "-hls_time 2", // Duration of each segment
-    //   "-hls_list_size 10", // Max number of playlist entries
-    //   `-start_number ${currentSegmentIndex}`, // Resume segment number at given index
-    //   `-hls_segment_filename ${join(output, "segment-320-%03d.ts")}`, // Name of the segment file
-    //   "-hls_flags delete_segments+append_list", // Delete segments older than playlist
-    // ])
+    writeFileSync(
+      join(output, "master.m3u8"),
+      [
+        "#EXTM3U",
+        ...Object.entries(resolutionsOptions).map(
+          ([resolution, resolutionOptions]) =>
+            `#EXT-X-STREAM-INF:BANDWIDTH=${resolutionOptions["b:v"].slice(
+              0,
+              -1,
+            )}000,RESOLUTION=${resolution}x?\n${resolution}/index.m3u8`,
+        ),
+      ].join("\n"),
+    );
+
     command
       .on("start", () => {
         console.log("[ffmpeg] Start recording >> ", output);

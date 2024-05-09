@@ -44,6 +44,3 @@ next-env.d.ts
 
 # turbo
 .turbo
-
-# streaming output
-output

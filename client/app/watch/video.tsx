@@ -27,13 +27,13 @@ const VideoPlayer = ({ streams }: { streams: string[] }) => {
           liveSyncDurationCount: 5,
           maxMaxBufferLength: 10,
         });
-        hls.loadSource(`http://localhost:3001/watch/${selectedStream}`);
+        hls.loadSource(`http://localhost:3001/streams/${selectedStream}`);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
           video.play();
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = `http://localhost:3001/watch/${selectedStream}`;
+        video.src = `http://localhost:3001/streams/${selectedStream}`;
         video.addEventListener("loadedmetadata", function () {
           video.play();
         });
