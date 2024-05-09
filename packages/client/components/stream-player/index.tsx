@@ -63,6 +63,7 @@ export const StreamPlayer = ({
             hostIdentity={user.id}
             name={stream.name}
             thumbnailUrl={stream.thumbnailUrl}
+            followedByCount={user._count.followedBy}
           />
         </div>
         <div className={cn("col-span-1", collapsed && "hidden")}>

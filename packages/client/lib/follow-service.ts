@@ -1,19 +1,22 @@
 import { db } from "@video-streaming/database";
 import { getSelf } from "./auth-service";
+import type { UserWithStream } from "./recommended-service";
 
-export const getFollowedUsers = async () => {
+export const getFollowedUsers = async (): Promise<UserWithStream[]> => {
   const self = await getSelf();
 
-  const followedUsers = db.follow.findMany({
+  const followedUsers = await db.follow.findMany({
     where: {
       followerId: self.id,
     },
     include: {
-      following: true,
+      following: {
+        include: {stream: true}
+      },
     },
   });
 
-  return followedUsers;
+  return followedUsers.map((user) => user.following);
 };
 
 export const isFollowingUser = async (id: string) => {

@@ -1,8 +1,13 @@
 import { db } from "@video-streaming/database";
+import type { User, Stream } from "@prisma/client";
 
 import { getSelf } from "./auth-service";
 
-export const getRecommended = async () => {
+export interface UserWithStream extends User {
+  stream: Stream | null
+}
+
+export const getRecommended = async (): Promise<UserWithStream[]> => {
   const userId = await getSelf()
     .then((user) => user.id)
     .catch(() => null);

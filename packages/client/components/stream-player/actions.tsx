@@ -1,20 +1,20 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
-import { Button } from "../ui/button";
-import { Heart } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import { onFollow, onUnfollow } from "@/actions/follow";
-import { useTransition } from "react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@clerk/nextjs";
+import { Heart } from "lucide-react";
+import { useAction } from "next-safe-action/hooks";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 
 interface ActionsProps {
   isFollowing: boolean;
   hostIdentity: string;
   isHost: boolean;
-  followedByCount;
+  followedByCount: number;
 }
 
 export const Actions = ({
@@ -23,28 +23,24 @@ export const Actions = ({
   isHost,
   followedByCount,
 }: ActionsProps) => {
-  const [isPending, startTransition] = useTransition();
   const { userId } = useAuth();
   const router = useRouter();
-  const handleFollow = () => {
-    startTransition(() => {
-      onFollow(hostIdentity).then((data) =>
-        toast
-          .success(`You are now following ${data.following.username}`)
-          .catch(() => toast.error("Something went wrong"))
-      );
-    });
-  };
-
-  const handleUnfollow = () => {
-    startTransition(() => {
-      onUnFollow(hostIdentity).then((data) =>
-        toast
-          .success(`You have unfollowed ${data.following.username}`)
-          .catch(() => toast.error("Something went wrong"))
-      );
-    });
-  };
+  const follow = useAction(onFollow, {
+    onSuccess: (data) => {
+      toast.success(`You are now following ${data.following.username}`)
+    },
+    onError: () => {
+      toast.error("Something went wrong")
+    },
+  })
+  const unfollow = useAction(onUnfollow, {
+    onSuccess: (data) => {
+      toast.success(`You have unfollowed ${data.following.username}`)
+    },
+    onError: () => {
+      toast.error("Something went wrong")
+    },
+  })
 
   const toggleFollow = () => {
     if (!userId) {
@@ -54,11 +50,13 @@ export const Actions = ({
     if (isHost) return;
 
     if (isFollowing) {
-      handleUnfollow();
+      unfollow.execute(hostIdentity);
     } else {
-      handleFollow();
+      follow.execute(hostIdentity);
     }
   };
+
+  const isPending = follow.status === "executing" || unfollow.status === "executing";
 
   const followedByLabel = followedByCount === 1 ? "follower" : "followers";
   return (
