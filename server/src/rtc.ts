@@ -34,20 +34,24 @@ export default class RTCHandler {
       console.log(`[rtc][${this.socket.id}] answer sent`);
       this.socket.emit("answer", answer);
     });
+
     this.socket.on("answer", async () => {
       console.warn(`[rtc][${this.socket.id}] unexpected answer received`);
     });
+
     this.socket.on("ice-candidate", (iceCandidateInit) => {
       console.log(`[rtc][${this.socket.id}] ice candidate via socket`);
       const iceCandidate = new wrtc.RTCIceCandidate(iceCandidateInit);
       this.peerConnection.addIceCandidate(iceCandidate);
     });
+
     this.socket.on("disconnect", () => {
       console.log(`[rtc][${this.socket.id}] disconnect`);
       if (this.peerConnection.connectionState === "connected") {
         this.peerConnection.close();
       }
     });
+
     this.socket.on("error", (error) => {
       console.error(`[rtc][${this.socket.id}] error:`, error);
     });
@@ -63,12 +67,14 @@ export default class RTCHandler {
         this.socket.emit("ice-candidate", event.candidate);
       }
     };
+
     this.peerConnection.onconnectionstatechange = () => {
       console.log(
         `[rtc][${this.socket.id}] connection state changed:`,
         this.peerConnection.connectionState
       );
     };
+
     this.peerConnection.ontrack = (event) => {
       console.log(`[rtc][${this.socket.id}] track received`);
 
@@ -81,8 +87,15 @@ export default class RTCHandler {
           break;
       }
 
-      if (this.videoTrack && this.audioTrack) {
-        this.handleTranscoding({
+      // Initialize transcoding if the tracks are available.
+      // The sinks are checked to ensure we don't initialize transcoding twice.
+      if (
+        this.videoTrack &&
+        this.audioTrack &&
+        !this.videoSink &&
+        !this.audioSink
+      ) {
+        this.initializeTranscoding({
           video: this.videoTrack,
           audio: this.audioTrack,
         });
@@ -90,7 +103,7 @@ export default class RTCHandler {
     };
   }
 
-  private handleTranscoding({
+  private initializeTranscoding({
     video,
     audio,
   }: {

@@ -1,14 +1,11 @@
 "use strict";
 
-import { PassThrough } from "stream";
-import fs from "fs";
-import wrtc from "@roamhq/wrtc";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import wrtc from "@roamhq/wrtc";
 import ffmpeg from "fluent-ffmpeg";
 import { StreamInput } from "fluent-ffmpeg-multistream";
-import { join } from "path";
+import { PassThrough } from "stream";
 
-const { RTCAudioSink, RTCVideoSink } = wrtc.nonstandard;
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 export type AudioDataEvent = {
@@ -131,78 +128,3 @@ export class StreamHandler {
     });
   }
 }
-
-function beforeOffer({
-  peerConnection,
-  videoTrack,
-  audioTrack,
-}: BeforeOfferOptions) {
-  const audioSink = new RTCAudioSink(audioTrack);
-  const videoSink = new RTCVideoSink(videoTrack);
-
-  let index = 0;
-  const streams = [] as StreamHandler[];
-
-  const directory = join(process.cwd(), "recordings");
-  if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory);
-  }
-
-  videoSink.onframe = (event: VideoFrameEvent) => {
-    if (streams[0] && streams[0].isCompatible(event)) {
-      streams[0].pushVideoFrame(event);
-      return;
-    }
-
-    const handler = new StreamHandler({
-      event,
-      outputPath: join(directory, `recording-${index}.m3u8`),
-      audioSink,
-    });
-
-    index++;
-
-    streams.unshift(handler);
-
-    streams.forEach((stream) => {
-      if (stream !== handler && !stream.streamingEnded) {
-        stream.end();
-      }
-    });
-
-    handler.pushVideoFrame(event);
-  };
-
-  const { close } = peerConnection;
-  peerConnection.close = async function (...parameters) {
-    console.log("close");
-    audioSink.stop();
-    videoSink.stop();
-
-    streams.forEach((stream) => {
-      if (!stream.streamingEnded) {
-        stream.end();
-      }
-    });
-
-    if (!streams.every((stream) => stream.processingEnded)) {
-      await new Promise<void>((resolve) => {
-        const interval = setInterval(() => {
-          console.log(
-            "Waiting for all streams to end",
-            streams.every((stream) => stream.processingEnded)
-          );
-          if (streams.every((stream) => stream.processingEnded)) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, 1000);
-      });
-    }
-
-    console.log("done");
-
-    return close.apply(this, ...parameters);
-  };
-}
-export { beforeOffer };
