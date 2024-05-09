@@ -17,6 +17,7 @@ interface HeaderProps {
   imageUrl: string;
   isFollowing: boolean;
   name: string;
+  followedByCount: number;
 }
 
 export const Header = ({
@@ -26,6 +27,7 @@ export const Header = ({
   imageUrl,
   isFollowing,
   name,
+  followedByCount,
 }: HeaderProps) => {
   const participants = useParticipants();
   const participant = useRemoteParticipant(hostIdentity);
@@ -69,6 +71,7 @@ export const Header = ({
         isFollowing={isFollowing}
         hostIdentity={hostIdentity}
         isHost={isHost}
+        followedByCount={followedByCount}
       />
     </div>
   );

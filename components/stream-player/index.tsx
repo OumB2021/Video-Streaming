@@ -12,7 +12,10 @@ import { Header, HeaderSkeleton } from "./header";
 import { InfoCard } from "./info-card";
 
 interface StreamPlayerProps {
-  user: User & { stream: Stream | null };
+  user: User & {
+    stream: Stream | null;
+    _count: { followedBy: number };
+  };
   stream: Stream;
   isFollowing: boolean;
 }
@@ -53,6 +56,7 @@ export const StreamPlayer = ({
             imageUrl={user.imageUrl}
             isFollowing={isFollowing}
             name={stream.name}
+            followedByCount={user._count.followedBy}
           />
           <InfoCard
             viewerIdentity={identity}

@@ -14,12 +14,14 @@ interface ActionsProps {
   isFollowing: boolean;
   hostIdentity: string;
   isHost: boolean;
+  followedByCount;
 }
 
 export const Actions = ({
   isFollowing,
   hostIdentity,
   isHost,
+  followedByCount,
 }: ActionsProps) => {
   const [isPending, startTransition] = useTransition();
   const { userId } = useAuth();
@@ -57,19 +59,32 @@ export const Actions = ({
       handleFollow();
     }
   };
+
+  const followedByLabel = followedByCount === 1 ? "follower" : "followers";
   return (
-    <Button
-      disabled={isPending || isHost}
-      onClick={toggleFollow}
-      variant={"primary"}
-      size={"sm"}
-      className="w-full lg:w-auto"
-    >
-      <Heart
-        className={cn("h-4 w-4 mr-2", isFollowing ? "fill-white" : "fill-none")}
-      />
-      {isFollowing ? "Unfollow" : "Follow"}
-    </Button>
+    <div className="flex flex-col space-y-2">
+      <div className="text-sm text-center text-muted-foreground gap-x-3">
+        <span className="font-semibold text-primary">{followedByCount}</span>{" "}
+        {followedByLabel}
+      </div>
+      <div>
+        <Button
+          disabled={isPending || isHost}
+          onClick={toggleFollow}
+          variant={"primary"}
+          size={"sm"}
+          className="w-full lg:w-auto"
+        >
+          <Heart
+            className={cn(
+              "h-4 w-4 mr-2",
+              isFollowing ? "fill-white" : "fill-none"
+            )}
+          />
+          {isFollowing ? "Unfollow" : "Follow"}
+        </Button>
+      </div>
+    </div>
   );
 };
 

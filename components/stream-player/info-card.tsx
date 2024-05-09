@@ -10,6 +10,7 @@ interface InfoCardProps {
   hostIdentity: string;
   name: string;
   thumbnailUrl: string | null;
+  followedByCount: number;
 }
 
 export const InfoCard = ({
