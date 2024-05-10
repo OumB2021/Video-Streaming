@@ -8,7 +8,8 @@
     "format": "turbo run format",
     "typecheck": "turbo run typecheck",
     "db:push": "turbo run db:push",
-    "db:generate": "turbo run db:generate"
+    "db:generate": "turbo run db:generate",
+    "db:studio": "turbo run db:studio"
   },
   "keywords": [],
   "author": "",

@@ -12,6 +12,7 @@
     },
     "typecheck": {},
     "db:push": { "cache": false },
-    "db:generate": { "cache": false }
+    "db:generate": { "cache": false },
+    "db:studio": { "cache": false }
   }
 }

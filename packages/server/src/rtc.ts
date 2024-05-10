@@ -1,9 +1,9 @@
-import type { Socket } from "socket.io";
 import wrtc from "@roamhq/wrtc";
 import { RTCEventMap } from "@video-streaming/shared";
-import { StreamHandler, VideoFrameEvent } from "./ffmpeg.js";
-import { join } from "path";
 import * as fs from "fs";
+import { join } from "path";
+import type { Socket } from "socket.io";
+import { StreamHandler, VideoFrameEvent } from "./ffmpeg.js";
 
 export default class RTCHandler {
   private peerConnection = new wrtc.RTCPeerConnection({
@@ -17,36 +17,42 @@ export default class RTCHandler {
   private audioSink?: wrtc.nonstandard.RTCAudioSink;
   private streamHandlers: StreamHandler[] = [];
 
-  constructor(private readonly socket: Socket<RTCEventMap>) {
+  onstart?: () => void;
+  onstop?: () => void;
+
+  constructor(
+    private readonly socket: Socket<RTCEventMap>,
+    private readonly streamId: string
+  ) {
     this.attachSocketListeners();
     this.attachPeerConnectionListeners();
 
-    this.outputDir = join(process.cwd(), "output", this.socket.id);
+    this.outputDir = join(process.cwd(), "output", this.streamId);
   }
 
   private attachSocketListeners() {
     this.socket.on("offer", async (offerInit) => {
-      console.log(`[rtc][${this.socket.id}] offer received`);
+      console.log(`[rtc][${this.streamId}] offer received`);
       const offer = new wrtc.RTCSessionDescription(offerInit);
       await this.peerConnection.setRemoteDescription(offer);
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
-      console.log(`[rtc][${this.socket.id}] answer sent`);
+      console.log(`[rtc][${this.streamId}] answer sent`);
       this.socket.emit("answer", answer);
     });
 
     this.socket.on("answer", async () => {
-      console.warn(`[rtc][${this.socket.id}] unexpected answer received`);
+      console.warn(`[rtc][${this.streamId}] unexpected answer received`);
     });
 
     this.socket.on("ice-candidate", (iceCandidateInit) => {
-      console.log(`[rtc][${this.socket.id}] ice candidate via socket`);
+      console.log(`[rtc][${this.streamId}] ice candidate via socket`);
       const iceCandidate = new wrtc.RTCIceCandidate(iceCandidateInit);
       this.peerConnection.addIceCandidate(iceCandidate);
     });
 
     this.socket.on("disconnect", () => {
-      console.log(`[rtc][${this.socket.id}] disconnect`);
+      console.log(`[rtc][${this.streamId}] disconnect`);
       if (this.peerConnection.connectionState === "connected") {
         this.peerConnection.close();
       }
@@ -54,15 +60,15 @@ export default class RTCHandler {
     });
 
     this.socket.on("error", (error) => {
-      console.error(`[rtc][${this.socket.id}] error:`, error);
+      console.error(`[rtc][${this.streamId}] error:`, error);
     });
   }
 
   private attachPeerConnectionListeners() {
     this.peerConnection.onicecandidate = (event) => {
       console.log(
-        `[rtc][${this.socket.id}] ice candidate via peer connection:`,
-        event.candidate,
+        `[rtc][${this.streamId}] ice candidate via peer connection:`,
+        event.candidate
       );
       if (event.candidate) {
         this.socket.emit("ice-candidate", event.candidate);
@@ -71,13 +77,13 @@ export default class RTCHandler {
 
     this.peerConnection.onconnectionstatechange = () => {
       console.log(
-        `[rtc][${this.socket.id}] connection state changed:`,
-        this.peerConnection.connectionState,
+        `[rtc][${this.streamId}] connection state changed:`,
+        this.peerConnection.connectionState
       );
     };
 
     this.peerConnection.ontrack = (event) => {
-      console.log(`[rtc][${this.socket.id}] track received`);
+      console.log(`[rtc][${this.streamId}] track received`);
 
       switch (event.track.kind) {
         case "video":
@@ -96,6 +102,7 @@ export default class RTCHandler {
         !this.videoSink &&
         !this.audioSink
       ) {
+        this.onstart?.();
         this.initializeTranscoding({
           video: this.videoTrack,
           audio: this.audioTrack,
@@ -124,7 +131,7 @@ export default class RTCHandler {
   private handleFrame(event: VideoFrameEvent) {
     if (!this.videoSink || !this.audioSink) {
       throw new Error(
-        `[rtc][${this.socket.id}] missing audio and/or video sink`,
+        `[rtc][${this.streamId}] missing audio and/or video sink`
       );
     }
 
@@ -145,7 +152,7 @@ export default class RTCHandler {
     });
 
     console.log(
-      `[rtc][${this.socket.id}] created stream handler ${this.streamHandlers.length} with size ${streamHandler.size}, resuming at ${segmentFileCount}`,
+      `[rtc][${this.streamId}] created stream handler ${this.streamHandlers.length} with size ${streamHandler.size}, resuming at ${segmentFileCount}`
     );
 
     this.streamHandlers.forEach((handler) => {
@@ -159,9 +166,10 @@ export default class RTCHandler {
     streamHandler.pushVideoFrame(event);
   }
 
-  private async endStream() {
+  private endStream() {
     if (this.streamHandlers[0] && !this.streamHandlers[0].streamingEnded) {
       this.streamHandlers[0].pushVideoFrame(null);
+      this.onstop?.();
     }
   }
 }

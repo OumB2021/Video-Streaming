@@ -3,6 +3,14 @@ import { notFound } from "next/navigation";
 import { Actions } from "./_components/actions";
 import { isFollowingUser } from "@/lib/follow-service";
 import { StreamPlayer } from "@/components/stream-player";
+import dynamic from "next/dynamic";
+
+const LocalStreamPlayer = dynamic(
+  () => import("@/components/local-stream-player"),
+  {
+    ssr: false,
+  }
+);
 
 interface UserPageProps {
   params: {
@@ -18,8 +26,11 @@ const UserPage = async ({ params }: UserPageProps) => {
   }
 
   const isFollowing = await isFollowingUser(user.id);
-  return (
+
+  return user.stream.type === "LIVEKIT" ? (
     <StreamPlayer user={user} stream={user.stream} isFollowing={isFollowing} />
+  ) : (
+    <LocalStreamPlayer user={user} stream={user.stream} />
   );
 };
 

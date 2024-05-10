@@ -129,7 +129,7 @@ export class StreamHandler {
       .audioCodec("aac");
 
     for (const [resolution, resolutionOptions] of Object.entries(
-      resolutionsOptions,
+      resolutionsOptions
     )) {
       const resolutionPath = join(output, resolution);
       if (!existsSync(resolutionPath)) {
@@ -155,25 +155,25 @@ export class StreamHandler {
           ([resolution, resolutionOptions]) =>
             `#EXT-X-STREAM-INF:BANDWIDTH=${resolutionOptions["b:v"].slice(
               0,
-              -1,
-            )}000,RESOLUTION=${resolution}x?\n${resolution}/index.m3u8`,
+              -1
+            )}000,RESOLUTION=${resolution}x?\n${resolution}/index.m3u8`
         ),
-      ].join("\n"),
+      ].join("\n")
     );
 
     command
       .on("start", () => {
-        console.log("[ffmpeg] Start recording >> ", output);
+        // console.log("[ffmpeg] Start recording >> ", output);
       })
-      .on("stdout", (data) => {
-        console.log("[ffmpeg] stdout", data);
-      })
-      .on("stderr", (data) => {
-        console.error("[ffmpeg] stderr", data);
-      })
+      // .on("stdout", (data) => {
+      //   console.log("[ffmpeg] stdout", data);
+      // })
+      // .on("stderr", (data) => {
+      //   console.error("[ffmpeg] stderr", data);
+      // })
       .on("end", () => {
         this.processingEnded = true;
-        console.log("[ffmpeg] Stop recording >> ", output);
+        // console.log("[ffmpeg] Stop recording >> ", output);
       })
       .run();
 
@@ -187,7 +187,7 @@ export class StreamHandler {
   pushVideoFrame(event: VideoFrameEvent | null) {
     if (event) {
       this.video.push(Buffer.from(event.frame.data));
-    } else {
+    } else if (this.video.readable) {
       this.video.push(null);
     }
   }

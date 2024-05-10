@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { RTCEventMap } from "@video-streaming/shared";
 import { Socket, io } from "socket.io-client";
+import { toast } from "sonner";
 
-export function useWebRTC() {
+export function useWebRTC(streamId: string) {
   const [isActive, setIsActive] = useState(false);
 
   const [signalStatus, setSignalStatus] = useState<
@@ -11,26 +12,27 @@ export function useWebRTC() {
   const [rtcStatus, setRtcStatus] = useState<RTCIceConnectionState>("new");
 
   const localVideo = useRef<HTMLVideoElement>(null);
-  const remoteVideo = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!isActive) return;
 
     let other: string | null = null;
 
-    const socket = io("ws://localhost:3001") as Socket<RTCEventMap>;
+    const socket = io(
+      `ws://localhost:3001/stream/${streamId}`
+    ) as Socket<RTCEventMap>;
     const rtc = new RTCPeerConnection();
     let localStream: MediaStream | null = null;
 
     const connect = async () => {
       setSignalStatus("connecting");
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         socket.on("connect", () => {
           resolve();
         });
         socket.on("connect_error", (error) => {
-          throw new Error("Failed to connect to server: " + error);
+          reject(new Error("Failed to connect to server: " + error));
         });
       });
 
@@ -55,10 +57,6 @@ export function useWebRTC() {
 
       setSignalStatus("connected");
 
-      rtc.ontrack = (event) => {
-        const remoteStream = event.streams[0];
-        remoteVideo.current!.srcObject = remoteStream as MediaProvider;
-      };
       rtc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit("ice-candidate", event.candidate);
@@ -114,17 +112,21 @@ export function useWebRTC() {
         localStream.getTracks().forEach((track) => track.stop());
       }
       localVideo.current!.srcObject = null;
-      remoteVideo.current!.srcObject = null;
       setIsActive(false);
     };
 
     connect().catch((error) => {
       console.error(error);
+      toast.error("Failed to start streaming", {
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      });
+      setIsActive(false);
       close();
     });
 
     return close;
-  }, [isActive]);
+  }, [isActive, streamId]);
 
   const start = () => setIsActive(true);
   const stop = () => setIsActive(false);
@@ -134,7 +136,6 @@ export function useWebRTC() {
     start,
     stop,
     localVideo,
-    remoteVideo,
     signalStatus,
     rtcStatus,
   };
