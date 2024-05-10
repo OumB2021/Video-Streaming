@@ -11,6 +11,7 @@ const StreamSchema = z
     isChatEnabled: z.boolean(),
     isChatFollowersOnly: z.boolean(),
     isChatDelayed: z.boolean(),
+    thumbnailUrl: z.string(),
   })
   .partial();
 

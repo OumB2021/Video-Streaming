@@ -1,11 +1,12 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const NotFoundPage = () => {
+const ErrorPage = () => {
   return (
     <div className="h-full flex flex-col space-y-4 items-center justify-center text-muted-foreground">
-      <h1 className="text-4xl font-semibold"> 404</h1>
-      <p>User couldn&apos;t not be found.</p>
+      <p>Something went wrong.</p>
       <Button variant={"primary"} asChild>
         <Link href={"/"}>Navigate to main page</Link>
       </Button>
@@ -13,4 +14,4 @@ const NotFoundPage = () => {
   );
 };
 
-export default NotFoundPage;
+export default ErrorPage;
